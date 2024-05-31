@@ -1,0 +1,28 @@
+plugins {
+	id 'com.android.application'
+}
+
+android {
+	compileSdkVersion 28
+	
+	useLibrary 'org.apache.http.legacy'
+	
+	defaultConfig {
+		applicationId "eu.ggtm.cryptovision"
+		minSdkVersion 21
+		targetSdkVersion 28
+		versionCode 3
+		versionName "3.00 PhoeniX"
+	}
+	
+	buildTypes {
+		release {
+			minifyEnabled false
+			proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+		}
+	}
+}
+
+dependencies {
+	implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
