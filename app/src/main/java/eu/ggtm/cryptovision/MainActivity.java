@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
 	private String currentURL = "";
 	
 	private LinearLayout baseFrame;
+	private LinearLayout headEdge;
 	private WebView accessPortal;
 	private ImageView chatShelf;
 	private HorizontalScrollView bottomSpacer;
@@ -83,6 +84,7 @@ public class MainActivity extends Activity {
 	
 	private void initialize(Bundle _savedInstanceState) {
 		baseFrame = findViewById(R.id.baseFrame);
+		headEdge = findViewById(R.id.headEdge);
 		accessPortal = findViewById(R.id.accessPortal);
 		accessPortal.getSettings().setJavaScriptEnabled(true);
 		accessPortal.getSettings().setSupportZoom(true);
@@ -243,8 +245,9 @@ public class MainActivity extends Activity {
 	private void initializeLogic() {
 		setTitle("cVn");
 		_enableJavascript();
+		_actionFullscreenAddon();
 		versionInfo = "3.00";
-		buildInfo = "33";
+		buildInfo = "35";
 		memory.edit().putString("Version", versionInfo).commit();
 		memory.edit().putString("Build", buildInfo).commit();
 		chatShelf.setColorFilter(0xFF350000, PorterDuff.Mode.MULTIPLY);
@@ -253,11 +256,21 @@ public class MainActivity extends Activity {
 			android.graphics.drawable.GradientDrawable SketchUi = new android.graphics.drawable.GradientDrawable();
 			int d = (int) getApplicationContext().getResources().getDisplayMetrics().density;
 			int clrs [] = {0xFF000000,0xFF757575};
+			SketchUi= new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP, clrs);
+			SketchUi.setCornerRadii(new float[]{
+				d*20,d*20,d*20 ,d*20,d*0,d*0 ,d*0,d*0});
+			headEdge.setElevation(d*5);
+			headEdge.setBackground(SketchUi);
+		}
+		{
+			android.graphics.drawable.GradientDrawable SketchUi = new android.graphics.drawable.GradientDrawable();
+			int d = (int) getApplicationContext().getResources().getDisplayMetrics().density;
+			int clrs [] = {0xFF000000,0xFF757575};
 			SketchUi= new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, clrs);
 			SketchUi.setCornerRadii(new float[]{
-				d*25,d*25,d*25 ,d*25,d*0,d*0 ,d*0,d*0});
+				d*0,d*0,d*0 ,d*0,d*20,d*20 ,d*20,d*20});
 			footHeader.setElevation(d*5);
-			android.graphics.drawable.RippleDrawable SketchUi_RD = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{0xFFB71C1C}), SketchUi, null);
+			android.graphics.drawable.RippleDrawable SketchUi_RD = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{0xFF550000}), SketchUi, null);
 			footHeader.setBackground(SketchUi_RD);
 			footHeader.setClickable(true);
 		}
@@ -343,6 +356,60 @@ public class MainActivity extends Activity {
 			};
 			_timer.schedule(exitDouble, (int)(2000));
 		}
+	}
+	
+	
+	public void _silentFullscreenAddon() {
+	}
+	
+	public class CustomWebClient extends WebChromeClient {
+		private View mCustomView;
+		private WebChromeClient.CustomViewCallback mCustomViewCallback;
+		protected FrameLayout frame;
+		
+		// Initially mOriginalOrientation is set to Landscape
+		private int mOriginalOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+		private int mOriginalSystemUiVisibility;
+		
+		// Constructor for CustomWebClient
+		public CustomWebClient() {}
+		
+		public Bitmap getDefaultVideoPoster() {
+			if (MainActivity.this == null) {
+				return null; }
+			return BitmapFactory.decodeResource(MainActivity.this.getApplicationContext().getResources(), 2130837573); }
+		
+		public void onShowCustomView(View paramView, WebChromeClient.CustomViewCallback viewCallback) {
+			if (this.mCustomView != null) {
+				onHideCustomView();
+				return; }
+			this.mCustomView = paramView;
+			this.mOriginalSystemUiVisibility = MainActivity.this.getWindow().getDecorView().getSystemUiVisibility();
+			// When CustomView is shown screen orientation changes to mOriginalOrientation (Landscape).
+			MainActivity.this.setRequestedOrientation(this.mOriginalOrientation);
+			// After that mOriginalOrientation is set to portrait.
+			this.mOriginalOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+			this.mCustomViewCallback = viewCallback; ((FrameLayout)MainActivity.this.getWindow().getDecorView()).addView(this.mCustomView, new FrameLayout.LayoutParams(-1, -1)); MainActivity.this.getWindow().getDecorView().setSystemUiVisibility(3846);
+		}
+		
+		public void onHideCustomView() {
+			((FrameLayout)MainActivity.this.getWindow().getDecorView()).removeView(this.mCustomView);
+			this.mCustomView = null;
+			MainActivity.this.getWindow().getDecorView().setSystemUiVisibility(this.mOriginalSystemUiVisibility);
+			// When CustomView is hidden, screen orientation is set to mOriginalOrientation (portrait).
+			MainActivity.this.setRequestedOrientation(this.mOriginalOrientation);
+			// After that mOriginalOrientation is set to landscape.
+			this.mOriginalOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; this.mCustomViewCallback.onCustomViewHidden();
+			this.mCustomViewCallback = null;
+		}
+	}
+	
+	{
+	}
+	
+	
+	public void _actionFullscreenAddon() {
+		accessPortal.setWebChromeClient(new CustomWebClient());
 	}
 	
 	
