@@ -49,12 +49,14 @@ public class SettingsActivity extends Activity {
 	private double tapCounter = 0;
 	
 	private LinearLayout settingsBase;
+	private LinearLayout headEdge;
 	private HorizontalScrollView topSpacer;
 	private TextView settingsTitle;
 	private TextView settingsInfo;
 	private Switch settingShelf;
 	private Switch settingBorders;
 	private Switch settingExitbutton;
+	private Switch settingEgg;
 	private ScrollView upPusher;
 	private LinearLayout footHeader;
 	private TextView backButton;
@@ -75,12 +77,14 @@ public class SettingsActivity extends Activity {
 	
 	private void initialize(Bundle _savedInstanceState) {
 		settingsBase = findViewById(R.id.settingsBase);
+		headEdge = findViewById(R.id.headEdge);
 		topSpacer = findViewById(R.id.topSpacer);
 		settingsTitle = findViewById(R.id.settingsTitle);
 		settingsInfo = findViewById(R.id.settingsInfo);
 		settingShelf = findViewById(R.id.settingShelf);
 		settingBorders = findViewById(R.id.settingBorders);
 		settingExitbutton = findViewById(R.id.settingExitbutton);
+		settingEgg = findViewById(R.id.settingEgg);
 		upPusher = findViewById(R.id.upPusher);
 		footHeader = findViewById(R.id.footHeader);
 		backButton = findViewById(R.id.backButton);
@@ -133,6 +137,21 @@ public class SettingsActivity extends Activity {
 			}
 		});
 		
+		settingEgg.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+			@Override
+			public void onCheckedChanged(CompoundButton _param1, boolean _param2) {
+				final boolean _isChecked = _param2;
+				if (_isChecked) {
+					memory.edit().putString("Egg", "Activated").commit();
+					settingEgg.setVisibility(View.VISIBLE);
+				}
+				else {
+					memory.edit().putString("Egg", "Disabled").commit();
+					settingEgg.setVisibility(View.GONE);
+				}
+			}
+		});
+		
 		backButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -176,10 +195,12 @@ public class SettingsActivity extends Activity {
 					if (tapCounter == 15) {
 						memory.edit().putString("Egg", "Activated").commit();
 						SketchwareUtil.showMessage(getApplicationContext(), "Now you've done it!");
+						settingEgg.setChecked(true);
+						settingEgg.setVisibility(View.VISIBLE);
 					}
 				}
 				else {
-					SketchwareUtil.showMessage(getApplicationContext(), "Sorry, that trick only works once...");
+					SketchwareUtil.showMessage(getApplicationContext(), "Changes were made... Not telling what...");
 				}
 			}
 		});
@@ -187,15 +208,26 @@ public class SettingsActivity extends Activity {
 	
 	private void initializeLogic() {
 		settingShelf.setVisibility(View.VISIBLE);
+		settingEgg.setVisibility(View.GONE);
 		versionInfo = memory.getString("Version", "");
 		buildInfo = memory.getString("Build", "");
 		{
 			android.graphics.drawable.GradientDrawable SketchUi = new android.graphics.drawable.GradientDrawable();
 			int d = (int) getApplicationContext().getResources().getDisplayMetrics().density;
-			int clrs [] = {0xFF000000,0xFF757575};
-			SketchUi= new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, clrs);
+			int clrs [] = {0xFF333333,0xFF757575};
+			SketchUi= new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP, clrs);
 			SketchUi.setCornerRadii(new float[]{
-				d*35,d*35,d*35 ,d*35,d*0,d*0 ,d*0,d*0});
+				d*20,d*20,d*20 ,d*20,d*0,d*0 ,d*0,d*0});
+			headEdge.setElevation(d*5);
+			headEdge.setBackground(SketchUi);
+		}
+		{
+			android.graphics.drawable.GradientDrawable SketchUi = new android.graphics.drawable.GradientDrawable();
+			int d = (int) getApplicationContext().getResources().getDisplayMetrics().density;
+			int clrs [] = {0xFF757575,0xFF333333};
+			SketchUi= new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP, clrs);
+			SketchUi.setCornerRadii(new float[]{
+				d*0,d*0,d*0 ,d*0,d*20,d*20 ,d*20,d*20});
 			footHeader.setElevation(d*5);
 			android.graphics.drawable.RippleDrawable SketchUi_RD = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{0xFFB71C1C}), SketchUi, null);
 			footHeader.setBackground(SketchUi_RD);
@@ -226,6 +258,14 @@ public class SettingsActivity extends Activity {
 		}
 		else {
 			settingExitbutton.setChecked(false);
+		}
+		if (memory.getString("Egg", "").equals("Activated")) {
+			settingEgg.setVisibility(View.VISIBLE);
+			settingEgg.setChecked(true);
+		}
+		else {
+			settingEgg.setVisibility(View.GONE);
+			settingEgg.setChecked(false);
 		}
 	}
 	
