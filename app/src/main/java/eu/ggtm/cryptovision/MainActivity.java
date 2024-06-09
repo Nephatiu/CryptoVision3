@@ -1,6 +1,7 @@
 package eu.ggtm.cryptovision;
 
 import android.animation.*;
+import android.animation.ObjectAnimator;
 import android.app.*;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -8,6 +9,7 @@ import android.app.DialogFragment;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.content.*;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -18,6 +20,7 @@ import android.media.*;
 import android.net.*;
 import android.net.Uri;
 import android.os.*;
+import android.os.Vibrator;
 import android.text.*;
 import android.text.style.*;
 import android.util.*;
@@ -25,6 +28,11 @@ import android.view.*;
 import android.view.View;
 import android.view.View.*;
 import android.view.animation.*;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.BounceInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.webkit.*;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -82,6 +90,7 @@ public class MainActivity extends Activity {
 	private double startShout3 = 0;
 	private double startShout4 = 0;
 	private double startShout5 = 0;
+	private boolean settingRewinding = false;
 	
 	private LinearLayout baseFrame;
 	private LinearLayout headEdge;
@@ -90,6 +99,7 @@ public class MainActivity extends Activity {
 	private HorizontalScrollView bottomSpacer;
 	private ProgressBar loadBar;
 	private LinearLayout footHeader;
+	private TextView portalTitle;
 	private TextView topShout1;
 	private TextView topShout2;
 	private TextView topShout3;
@@ -97,6 +107,9 @@ public class MainActivity extends Activity {
 	private TextView topShout5;
 	private ImageView cVnLogo;
 	private TextView versionSpam;
+	private TextView settingsPointer;
+	private DigitalClock timeDigital;
+	private AnalogClock timeAnalog;
 	private TextView settingsButton;
 	private TextView exitButton;
 	
@@ -120,6 +133,14 @@ public class MainActivity extends Activity {
 	private TimerTask queueShout5;
 	private SharedPreferences shouts;
 	private SharedPreferences colors;
+	private Vibrator touchBzz;
+	private TimerTask showSettings;
+	private TimerTask externalURL;
+	private Intent externalWeb = new Intent();
+	private TimerTask webTitleCheck;
+	private TimerTask eggDelay;
+	private ObjectAnimator titleVanish = new ObjectAnimator();
+	private TimerTask vanishDelay;
 	
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
@@ -139,6 +160,7 @@ public class MainActivity extends Activity {
 		bottomSpacer = findViewById(R.id.bottomSpacer);
 		loadBar = findViewById(R.id.loadBar);
 		footHeader = findViewById(R.id.footHeader);
+		portalTitle = findViewById(R.id.portalTitle);
 		topShout1 = findViewById(R.id.topShout1);
 		topShout2 = findViewById(R.id.topShout2);
 		topShout3 = findViewById(R.id.topShout3);
@@ -146,30 +168,64 @@ public class MainActivity extends Activity {
 		topShout5 = findViewById(R.id.topShout5);
 		cVnLogo = findViewById(R.id.cVnLogo);
 		versionSpam = findViewById(R.id.versionSpam);
+		settingsPointer = findViewById(R.id.settingsPointer);
+		timeDigital = findViewById(R.id.timeDigital);
+		timeAnalog = findViewById(R.id.timeAnalog);
 		settingsButton = findViewById(R.id.settingsButton);
 		exitButton = findViewById(R.id.exitButton);
 		memory = getSharedPreferences("memory", Activity.MODE_PRIVATE);
 		shelfToggle = new AlertDialog.Builder(this);
 		shouts = getSharedPreferences("shouts", Activity.MODE_PRIVATE);
 		colors = getSharedPreferences("colors", Activity.MODE_PRIVATE);
+		touchBzz = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 		
 		accessPortal.setWebViewClient(new WebViewClient() {
 			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
-				loadBar.setVisibility(View.VISIBLE);
-				loadValue = new TimerTask() {
-					@Override
-					public void run() {
-						runOnUiThread(new Runnable() {
-							@Override
-							public void run() {
-								loadBar.setProgress((int)accessPortal.getProgress());
-							}
-						});
-					}
-				};
-				_timer.scheduleAtFixedRate(loadValue, (int)(0), (int)(10));
+				if (!_url.contains("//cryptovision.live")) {
+					accessPortal.stopLoading();
+					externalWeb.setAction(Intent.ACTION_VIEW);
+					externalWeb.setData(Uri.parse(accessPortal.getUrl()));
+					accessPortal.goBack();
+					startActivity(externalWeb);
+				}
+				else {
+					loadBar.setVisibility(View.VISIBLE);
+					webTitleCheck.cancel();
+					portalTitle.setText("〰 Loading 〰");
+					settingsRotate.cancel();
+					settingsRotate = new TimerTask() {
+						@Override
+						public void run() {
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									settingsButton.setRotation((float)(settingsRotation));
+									if (settingsRotation < 359) {
+										settingsRotation++;
+									}
+									else {
+										settingsRotation = 0;
+									}
+								}
+							});
+						}
+					};
+					_timer.scheduleAtFixedRate(settingsRotate, (int)(5), (int)(5));
+					loadValue = new TimerTask() {
+						@Override
+						public void run() {
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									loadBar.setProgress((int)accessPortal.getProgress());
+								}
+							});
+						}
+					};
+					_timer.scheduleAtFixedRate(loadValue, (int)(0), (int)(10));
+				}
 				super.onPageStarted(_param1, _param2, _param3);
 			}
 			
@@ -184,11 +240,42 @@ public class MainActivity extends Activity {
 							@Override
 							public void run() {
 								loadBar.setVisibility(View.INVISIBLE);
+								webTitleCheck = new TimerTask() {
+									@Override
+									public void run() {
+										runOnUiThread(new Runnable() {
+											@Override
+											public void run() {
+												portalTitle.setText(accessPortal.getTitle());
+											}
+										});
+									}
+								};
+								_timer.scheduleAtFixedRate(webTitleCheck, (int)(100), (int)(100));
 							}
 						});
 					}
 				};
 				_timer.schedule(unloadDelay, (int)(250));
+				settingsRotate.cancel();
+				settingsRotate = new TimerTask() {
+					@Override
+					public void run() {
+						runOnUiThread(new Runnable() {
+							@Override
+							public void run() {
+								settingsButton.setRotation((float)(settingsRotation));
+								if (settingsRotation < 359) {
+									settingsRotation++;
+								}
+								else {
+									settingsRotation = 0;
+								}
+							}
+						});
+					}
+				};
+				_timer.scheduleAtFixedRate(settingsRotate, (int)(25), (int)(25));
 				super.onPageFinished(_param1, _param2);
 			}
 		});
@@ -196,6 +283,7 @@ public class MainActivity extends Activity {
 		chatShelf.setOnLongClickListener(new View.OnLongClickListener() {
 			@Override
 			public boolean onLongClick(View _view) {
+				touchBzz.vibrate((long)(111));
 				shelfToggle.setTitle("Do you want to disable the shelf?");
 				shelfToggle.setMessage("You have been pushing on the shelf for an extended time, do you want to disable it and gain some screenspace? (You can turn it back on in settings.)");
 				shelfToggle.setPositiveButton("Yes!", new DialogInterface.OnClickListener() {
@@ -219,58 +307,73 @@ public class MainActivity extends Activity {
 		footHeader.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				currentURL = accessPortal.getUrl();
-				accessPortal.stopLoading();
-				accessPortal.clearCache(true);
-				accessPortal.loadUrl("http://0.0.0.0");
-				accessPortal.stopLoading();
-				accessPortal.clearCache(true);
-				accessPortal.loadUrl(currentURL);
-				accessPortal.clearHistory();
+				if (accessPortal.getUrl().contains("node.cryptovision.live")) {
+					touchBzz.vibrate((long)(100));
+					accessPortal.stopLoading();
+					accessPortal.clearCache(true);
+					accessPortal.loadUrl("https://cryptovision.live");
+					accessPortal.clearHistory();
+				}
+				else {
+					touchBzz.vibrate((long)(100));
+					currentURL = accessPortal.getUrl();
+					accessPortal.stopLoading();
+					accessPortal.clearCache(true);
+					accessPortal.loadUrl("http://0.0.0.0");
+					accessPortal.stopLoading();
+					accessPortal.clearCache(true);
+					accessPortal.loadUrl(currentURL);
+					accessPortal.clearHistory();
+				}
 			}
 		});
 		
 		settingsButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				settingsRotate.cancel();
-				settingsButton.setTextColor(0xFF350000);
-				tapFlash = new TimerTask() {
-					@Override
-					public void run() {
-						runOnUiThread(new Runnable() {
-							@Override
-							public void run() {
-								settingsButton.setTextColor(0xFFFDD835);
-								settingsRotate = new TimerTask() {
-									@Override
-									public void run() {
-										runOnUiThread(new Runnable() {
-											@Override
-											public void run() {
-												if (settingsRotation > 0) {
-													settingsRotation--;
-													settingsButton.setRotation((float)(settingsRotation));
+				if (!settingRewinding) {
+					settingRewinding = true;
+					settingsRotate.cancel();
+					touchBzz.vibrate((long)(100));
+					settingsButton.setTextColor(0xFF350000);
+					tapFlash = new TimerTask() {
+						@Override
+						public void run() {
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									settingsButton.setTextColor(0xFFFDD835);
+									settingsRotate = new TimerTask() {
+										@Override
+										public void run() {
+											runOnUiThread(new Runnable() {
+												@Override
+												public void run() {
+													if (settingsRotation > 0) {
+														settingsRotation--;
+														settingsButton.setRotation((float)(settingsRotation));
+													}
+													else {
+														settingsRotate.cancel();
+														settingsRotation = 0;
+														settingsButton.setRotation((float)(settingsRotation));
+														hopActivity.setAction(Intent.ACTION_VIEW);
+														hopActivity.setClass(getApplicationContext(), SettingsActivity.class);
+														settingRewinding = false;
+														startActivity(hopActivity);
+														finish();
+													}
 												}
-												else {
-													settingsRotate.cancel();
-													settingsRotation = 0;
-													settingsButton.setRotation((float)(settingsRotation));
-													hopActivity.setAction(Intent.ACTION_VIEW);
-													hopActivity.setClass(getApplicationContext(), SettingsActivity.class);
-													startActivity(hopActivity);
-													finish();
-												}
-											}
-										});
-									}
-								};
-								_timer.scheduleAtFixedRate(settingsRotate, (int)(3), (int)(3));
-							}
-						});
-					}
-				};
-				_timer.schedule(tapFlash, (int)(50));
+											});
+										}
+									};
+									_timer.scheduleAtFixedRate(settingsRotate, (int)(3), (int)(3));
+								}
+							});
+						}
+					};
+					_timer.schedule(tapFlash, (int)(50));
+				}
 			}
 		});
 		
@@ -278,6 +381,7 @@ public class MainActivity extends Activity {
 			@Override
 			public void onClick(View _view) {
 				exitButton.setText("❌");
+				touchBzz.vibrate((long)(125));
 				tapFlash = new TimerTask() {
 					@Override
 					public void run() {
@@ -301,16 +405,26 @@ public class MainActivity extends Activity {
 		_enableJavascript();
 		_actionFullscreenAddon();
 		versionInfo = "3.00";
-		buildInfo = "46";
+		buildInfo = "95";
 		memory.edit().putString("Version", versionInfo).commit();
 		memory.edit().putString("Build", buildInfo).commit();
+		overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
 		chatShelf.setColorFilter(0xFF350000, PorterDuff.Mode.MULTIPLY);
+		timeDigital.setTextColor(Color.parseColor("#FFFFFF"));
+		timeDigital.setTextSize((float)11);
 		loadBar.setVisibility(View.INVISIBLE);
-		topShout1.setVisibility(View.INVISIBLE);
-		topShout2.setVisibility(View.INVISIBLE);
-		topShout3.setVisibility(View.INVISIBLE);
-		topShout4.setVisibility(View.INVISIBLE);
-		topShout5.setVisibility(View.INVISIBLE);
+		settingsPointer.setVisibility(View.GONE);
+		topShout1.setVisibility(View.GONE);
+		topShout2.setVisibility(View.GONE);
+		topShout3.setVisibility(View.GONE);
+		topShout4.setVisibility(View.GONE);
+		topShout5.setVisibility(View.GONE);
+		if (memory.getString("Fullscreen", "").equals("Enabled")) {
+			_hideNotibar();
+		}
+		else {
+			_showNotibar();
+		}
 		{
 			android.graphics.drawable.GradientDrawable SketchUi = new android.graphics.drawable.GradientDrawable();
 			int d = (int) getApplicationContext().getResources().getDisplayMetrics().density;
@@ -356,6 +470,19 @@ public class MainActivity extends Activity {
 		else {
 			exitButton.setVisibility(View.GONE);
 		}
+		webTitleCheck = new TimerTask() {
+			@Override
+			public void run() {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						portalTitle.setText("〰 Booting 〰");
+					}
+				});
+			}
+		};
+		_timer.scheduleAtFixedRate(webTitleCheck, (int)(100), (int)(100));
+		settingRewinding = false;
 		exitRepeat = false;
 		settingsRotation = 0;
 		accessPortal.loadUrl("https://cryptovision.live");
@@ -376,10 +503,145 @@ public class MainActivity extends Activity {
 				});
 			}
 		};
-		_timer.scheduleAtFixedRate(settingsRotate, (int)(10), (int)(10));
+		_timer.scheduleAtFixedRate(settingsRotate, (int)(25), (int)(25));
+		if (memory.getString("Time", "").equals("Digital")) {
+			timeDigital.setVisibility(View.VISIBLE);
+		}
+		else {
+			timeDigital.setVisibility(View.GONE);
+		}
+		if (memory.getString("Time", "").equals("Analog")) {
+			timeAnalog.setVisibility(View.VISIBLE);
+		}
+		else {
+			timeAnalog.setVisibility(View.GONE);
+		}
 		if (memory.getString("Egg", "").equals("Activated")) {
 			_setShouts();
 			_eggShouts();
+		}
+		if (!memory.contains("oneTimeSettingsArrow")) {
+			showSettings = new TimerTask() {
+				@Override
+				public void run() {
+					runOnUiThread(new Runnable() {
+						@Override
+						public void run() {
+							settingsPointer.setVisibility(View.VISIBLE);
+							showSettings = new TimerTask() {
+								@Override
+								public void run() {
+									runOnUiThread(new Runnable() {
+										@Override
+										public void run() {
+											settingsPointer.setVisibility(View.INVISIBLE);
+											showSettings = new TimerTask() {
+												@Override
+												public void run() {
+													runOnUiThread(new Runnable() {
+														@Override
+														public void run() {
+															settingsPointer.setVisibility(View.VISIBLE);
+															showSettings = new TimerTask() {
+																@Override
+																public void run() {
+																	runOnUiThread(new Runnable() {
+																		@Override
+																		public void run() {
+																			settingsPointer.setVisibility(View.INVISIBLE);
+																			showSettings = new TimerTask() {
+																				@Override
+																				public void run() {
+																					runOnUiThread(new Runnable() {
+																						@Override
+																						public void run() {
+																							settingsPointer.setVisibility(View.VISIBLE);
+																							showSettings = new TimerTask() {
+																								@Override
+																								public void run() {
+																									runOnUiThread(new Runnable() {
+																										@Override
+																										public void run() {
+																											settingsPointer.setVisibility(View.INVISIBLE);
+																											showSettings = new TimerTask() {
+																												@Override
+																												public void run() {
+																													runOnUiThread(new Runnable() {
+																														@Override
+																														public void run() {
+																															settingsPointer.setVisibility(View.VISIBLE);
+																															showSettings = new TimerTask() {
+																																@Override
+																																public void run() {
+																																	runOnUiThread(new Runnable() {
+																																		@Override
+																																		public void run() {
+																																			settingsPointer.setVisibility(View.INVISIBLE);
+																																			showSettings = new TimerTask() {
+																																				@Override
+																																				public void run() {
+																																					runOnUiThread(new Runnable() {
+																																						@Override
+																																						public void run() {
+																																							settingsPointer.setVisibility(View.VISIBLE);
+																																							showSettings = new TimerTask() {
+																																								@Override
+																																								public void run() {
+																																									runOnUiThread(new Runnable() {
+																																										@Override
+																																										public void run() {
+																																											settingsPointer.setVisibility(View.GONE);
+																																											memory.edit().putString("oneTimeSettingsArrow", "Shown").commit();
+																																										}
+																																									});
+																																								}
+																																							};
+																																							_timer.schedule(showSettings, (int)(3500));
+																																						}
+																																					});
+																																				}
+																																			};
+																																			_timer.schedule(showSettings, (int)(500));
+																																		}
+																																	});
+																																}
+																															};
+																															_timer.schedule(showSettings, (int)(500));
+																														}
+																													});
+																												}
+																											};
+																											_timer.schedule(showSettings, (int)(500));
+																										}
+																									});
+																								}
+																							};
+																							_timer.schedule(showSettings, (int)(500));
+																						}
+																					});
+																				}
+																			};
+																			_timer.schedule(showSettings, (int)(500));
+																		}
+																	});
+																}
+															};
+															_timer.schedule(showSettings, (int)(1000));
+														}
+													});
+												}
+											};
+											_timer.schedule(showSettings, (int)(500));
+										}
+									});
+								}
+							};
+							_timer.schedule(showSettings, (int)(2000));
+						}
+					});
+				}
+			};
+			_timer.schedule(showSettings, (int)(1500));
 		}
 	}
 	
@@ -400,10 +662,12 @@ public class MainActivity extends Activity {
 	
 	public void _doubleExit() {
 		if (exitRepeat) {
+			touchBzz.vibrate((long)(125));
 			SketchwareUtil.showMessage(getApplicationContext(), "\n👋");
 			finishAffinity();
 		}
 		else {
+			touchBzz.vibrate((long)(100));
 			exitRepeat = true;
 			SketchwareUtil.showMessage(getApplicationContext(), "Press \"Back\" again quickly to exit.");
 			exitDouble = new TimerTask() {
@@ -477,216 +741,249 @@ public class MainActivity extends Activity {
 	
 	
 	public void _eggShouts() {
-		startShout1 = SketchwareUtil.getRandom((int)(5000), (int)(10000));
-		eggShout1 = new TimerTask() {
+		vanishDelay = new TimerTask() {
 			@Override
 			public void run() {
 				runOnUiThread(new Runnable() {
 					@Override
 					public void run() {
-						timeShout1 = SketchwareUtil.getRandom((int)(10000), (int)(50000));
-						randomShout1 = SketchwareUtil.getRandom((int)(1), (int)(20));
-						colorShout1 = SketchwareUtil.getRandom((int)(1), (int)(6));
-						textShout1 = shouts.getString(String.valueOf((long)(randomShout1)), "");
-						coloredShout1 = colors.getString(String.valueOf((long)(colorShout1)), "");
-						queueShout1 = new TimerTask() {
+						titleVanish.setTarget(portalTitle);
+						titleVanish.setPropertyName("alpha");
+						titleVanish.setFloatValues((float)(1.0d), (float)(0.0d));
+						titleVanish.setDuration((int)(8000));
+						titleVanish.start();
+					}
+				});
+			}
+		};
+		_timer.schedule(vanishDelay, (int)(20000));
+		eggDelay = new TimerTask() {
+			@Override
+			public void run() {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						portalTitle.setVisibility(View.GONE);
+						topShout1.setVisibility(View.INVISIBLE);
+						topShout2.setVisibility(View.INVISIBLE);
+						topShout3.setVisibility(View.INVISIBLE);
+						topShout4.setVisibility(View.INVISIBLE);
+						topShout5.setVisibility(View.INVISIBLE);
+						startShout1 = SketchwareUtil.getRandom((int)(1000), (int)(10000));
+						eggShout1 = new TimerTask() {
 							@Override
 							public void run() {
 								runOnUiThread(new Runnable() {
 									@Override
 									public void run() {
-										topShout1.setText(textShout1);
-										topShout1.setVisibility(View.VISIBLE);
+										timeShout1 = SketchwareUtil.getRandom((int)(6000), (int)(57500));
+										randomShout1 = SketchwareUtil.getRandom((int)(1), (int)(20));
+										colorShout1 = SketchwareUtil.getRandom((int)(1), (int)(6));
+										textShout1 = shouts.getString(String.valueOf((long)(randomShout1)), "");
+										coloredShout1 = colors.getString(String.valueOf((long)(colorShout1)), "");
 										queueShout1 = new TimerTask() {
 											@Override
 											public void run() {
 												runOnUiThread(new Runnable() {
 													@Override
 													public void run() {
-														topShout1.setVisibility(View.INVISIBLE);
+														topShout1.setText(textShout1);
+														topShout1.setVisibility(View.VISIBLE);
+														queueShout1 = new TimerTask() {
+															@Override
+															public void run() {
+																runOnUiThread(new Runnable() {
+																	@Override
+																	public void run() {
+																		topShout1.setVisibility(View.INVISIBLE);
+																	}
+																});
+															}
+														};
+														_timer.schedule(queueShout1, (int)(4567));
 													}
 												});
 											}
 										};
-										_timer.schedule(queueShout1, (int)(4567));
+										_timer.schedule(queueShout1, (int)(timeShout1));
 									}
 								});
 							}
 						};
-						_timer.schedule(queueShout1, (int)(timeShout1));
-					}
-				});
-			}
-		};
-		_timer.scheduleAtFixedRate(eggShout1, (int)(startShout1), (int)(60000));
-		startShout2 = SketchwareUtil.getRandom((int)(5000), (int)(10000));
-		eggShout2 = new TimerTask() {
-			@Override
-			public void run() {
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						timeShout2 = SketchwareUtil.getRandom((int)(10000), (int)(50000));
-						randomShout2 = SketchwareUtil.getRandom((int)(1), (int)(20));
-						colorShout2 = SketchwareUtil.getRandom((int)(1), (int)(6));
-						textShout2 = shouts.getString(String.valueOf((long)(randomShout2)), "");
-						coloredShout2 = colors.getString(String.valueOf((long)(colorShout2)), "");
-						queueShout2 = new TimerTask() {
+						_timer.scheduleAtFixedRate(eggShout1, (int)(startShout1), (int)(60000));
+						startShout2 = SketchwareUtil.getRandom((int)(1000), (int)(10000));
+						eggShout2 = new TimerTask() {
 							@Override
 							public void run() {
 								runOnUiThread(new Runnable() {
 									@Override
 									public void run() {
-										topShout2.setText(textShout2);
-										topShout2.setVisibility(View.VISIBLE);
+										timeShout2 = SketchwareUtil.getRandom((int)(6000), (int)(57500));
+										randomShout2 = SketchwareUtil.getRandom((int)(1), (int)(20));
+										colorShout2 = SketchwareUtil.getRandom((int)(1), (int)(6));
+										textShout2 = shouts.getString(String.valueOf((long)(randomShout2)), "");
+										coloredShout2 = colors.getString(String.valueOf((long)(colorShout2)), "");
 										queueShout2 = new TimerTask() {
 											@Override
 											public void run() {
 												runOnUiThread(new Runnable() {
 													@Override
 													public void run() {
-														topShout2.setVisibility(View.INVISIBLE);
+														topShout2.setText(textShout2);
+														topShout2.setVisibility(View.VISIBLE);
+														queueShout2 = new TimerTask() {
+															@Override
+															public void run() {
+																runOnUiThread(new Runnable() {
+																	@Override
+																	public void run() {
+																		topShout2.setVisibility(View.INVISIBLE);
+																	}
+																});
+															}
+														};
+														_timer.schedule(queueShout2, (int)(4567));
 													}
 												});
 											}
 										};
-										_timer.schedule(queueShout2, (int)(4567));
+										_timer.schedule(queueShout2, (int)(timeShout2));
 									}
 								});
 							}
 						};
-						_timer.schedule(queueShout2, (int)(timeShout2));
-					}
-				});
-			}
-		};
-		_timer.scheduleAtFixedRate(eggShout2, (int)(startShout2), (int)(60000));
-		startShout3 = SketchwareUtil.getRandom((int)(5000), (int)(10000));
-		eggShout3 = new TimerTask() {
-			@Override
-			public void run() {
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						timeShout3 = SketchwareUtil.getRandom((int)(10000), (int)(50000));
-						randomShout3 = SketchwareUtil.getRandom((int)(1), (int)(20));
-						colorShout3 = SketchwareUtil.getRandom((int)(1), (int)(6));
-						textShout3 = shouts.getString(String.valueOf((long)(randomShout3)), "");
-						coloredShout3 = colors.getString(String.valueOf((long)(colorShout3)), "");
-						queueShout3 = new TimerTask() {
+						_timer.scheduleAtFixedRate(eggShout2, (int)(startShout2), (int)(60000));
+						startShout3 = SketchwareUtil.getRandom((int)(1000), (int)(10000));
+						eggShout3 = new TimerTask() {
 							@Override
 							public void run() {
 								runOnUiThread(new Runnable() {
 									@Override
 									public void run() {
-										topShout3.setText(textShout3);
-										topShout3.setVisibility(View.VISIBLE);
+										timeShout3 = SketchwareUtil.getRandom((int)(6000), (int)(57500));
+										randomShout3 = SketchwareUtil.getRandom((int)(1), (int)(20));
+										colorShout3 = SketchwareUtil.getRandom((int)(1), (int)(6));
+										textShout3 = shouts.getString(String.valueOf((long)(randomShout3)), "");
+										coloredShout3 = colors.getString(String.valueOf((long)(colorShout3)), "");
 										queueShout3 = new TimerTask() {
 											@Override
 											public void run() {
 												runOnUiThread(new Runnable() {
 													@Override
 													public void run() {
-														topShout3.setVisibility(View.INVISIBLE);
+														topShout3.setText(textShout3);
+														topShout3.setVisibility(View.VISIBLE);
+														queueShout3 = new TimerTask() {
+															@Override
+															public void run() {
+																runOnUiThread(new Runnable() {
+																	@Override
+																	public void run() {
+																		topShout3.setVisibility(View.INVISIBLE);
+																	}
+																});
+															}
+														};
+														_timer.schedule(queueShout3, (int)(4567));
 													}
 												});
 											}
 										};
-										_timer.schedule(queueShout3, (int)(4567));
+										_timer.schedule(queueShout3, (int)(timeShout3));
 									}
 								});
 							}
 						};
-						_timer.schedule(queueShout3, (int)(timeShout3));
-					}
-				});
-			}
-		};
-		_timer.scheduleAtFixedRate(eggShout3, (int)(startShout3), (int)(60000));
-		startShout4 = SketchwareUtil.getRandom((int)(5000), (int)(10000));
-		eggShout4 = new TimerTask() {
-			@Override
-			public void run() {
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						timeShout4 = SketchwareUtil.getRandom((int)(10000), (int)(50000));
-						randomShout4 = SketchwareUtil.getRandom((int)(1), (int)(20));
-						colorShout4 = SketchwareUtil.getRandom((int)(1), (int)(6));
-						textShout4 = shouts.getString(String.valueOf((long)(randomShout4)), "");
-						coloredShout4 = colors.getString(String.valueOf((long)(colorShout4)), "");
-						queueShout4 = new TimerTask() {
+						_timer.scheduleAtFixedRate(eggShout3, (int)(startShout3), (int)(60000));
+						startShout4 = SketchwareUtil.getRandom((int)(1000), (int)(10000));
+						eggShout4 = new TimerTask() {
 							@Override
 							public void run() {
 								runOnUiThread(new Runnable() {
 									@Override
 									public void run() {
-										topShout4.setText(textShout4);
-										topShout4.setVisibility(View.VISIBLE);
+										timeShout4 = SketchwareUtil.getRandom((int)(6000), (int)(57500));
+										randomShout4 = SketchwareUtil.getRandom((int)(1), (int)(20));
+										colorShout4 = SketchwareUtil.getRandom((int)(1), (int)(6));
+										textShout4 = shouts.getString(String.valueOf((long)(randomShout4)), "");
+										coloredShout4 = colors.getString(String.valueOf((long)(colorShout4)), "");
 										queueShout4 = new TimerTask() {
 											@Override
 											public void run() {
 												runOnUiThread(new Runnable() {
 													@Override
 													public void run() {
-														topShout4.setVisibility(View.INVISIBLE);
+														topShout4.setText(textShout4);
+														topShout4.setVisibility(View.VISIBLE);
+														queueShout4 = new TimerTask() {
+															@Override
+															public void run() {
+																runOnUiThread(new Runnable() {
+																	@Override
+																	public void run() {
+																		topShout4.setVisibility(View.INVISIBLE);
+																	}
+																});
+															}
+														};
+														_timer.schedule(queueShout4, (int)(4567));
 													}
 												});
 											}
 										};
-										_timer.schedule(queueShout4, (int)(4567));
+										_timer.schedule(queueShout4, (int)(timeShout4));
 									}
 								});
 							}
 						};
-						_timer.schedule(queueShout4, (int)(timeShout4));
-					}
-				});
-			}
-		};
-		_timer.scheduleAtFixedRate(eggShout4, (int)(startShout4), (int)(60000));
-		startShout5 = SketchwareUtil.getRandom((int)(5000), (int)(10000));
-		eggShout5 = new TimerTask() {
-			@Override
-			public void run() {
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						timeShout5 = SketchwareUtil.getRandom((int)(10000), (int)(50000));
-						randomShout5 = SketchwareUtil.getRandom((int)(1), (int)(20));
-						colorShout5 = SketchwareUtil.getRandom((int)(1), (int)(6));
-						textShout5 = shouts.getString(String.valueOf((long)(randomShout5)), "");
-						coloredShout5 = colors.getString(String.valueOf((long)(colorShout5)), "");
-						queueShout5 = new TimerTask() {
+						_timer.scheduleAtFixedRate(eggShout4, (int)(startShout4), (int)(60000));
+						startShout5 = SketchwareUtil.getRandom((int)(1000), (int)(10000));
+						eggShout5 = new TimerTask() {
 							@Override
 							public void run() {
 								runOnUiThread(new Runnable() {
 									@Override
 									public void run() {
-										topShout5.setText(textShout5);
-										topShout5.setVisibility(View.VISIBLE);
+										timeShout5 = SketchwareUtil.getRandom((int)(6000), (int)(57500));
+										randomShout5 = SketchwareUtil.getRandom((int)(1), (int)(20));
+										colorShout5 = SketchwareUtil.getRandom((int)(1), (int)(6));
+										textShout5 = shouts.getString(String.valueOf((long)(randomShout5)), "");
+										coloredShout5 = colors.getString(String.valueOf((long)(colorShout5)), "");
 										queueShout5 = new TimerTask() {
 											@Override
 											public void run() {
 												runOnUiThread(new Runnable() {
 													@Override
 													public void run() {
-														topShout5.setVisibility(View.INVISIBLE);
+														topShout5.setText(textShout5);
+														topShout5.setVisibility(View.VISIBLE);
+														queueShout5 = new TimerTask() {
+															@Override
+															public void run() {
+																runOnUiThread(new Runnable() {
+																	@Override
+																	public void run() {
+																		topShout5.setVisibility(View.INVISIBLE);
+																	}
+																});
+															}
+														};
+														_timer.schedule(queueShout5, (int)(4567));
 													}
 												});
 											}
 										};
-										_timer.schedule(queueShout5, (int)(4567));
+										_timer.schedule(queueShout5, (int)(timeShout5));
 									}
 								});
 							}
 						};
-						_timer.schedule(queueShout5, (int)(timeShout5));
+						_timer.scheduleAtFixedRate(eggShout5, (int)(startShout5), (int)(60000));
 					}
 				});
 			}
 		};
-		_timer.scheduleAtFixedRate(eggShout5, (int)(startShout5), (int)(60000));
+		_timer.schedule(eggDelay, (int)(30000));
 	}
 	
 	
@@ -717,6 +1014,20 @@ public class MainActivity extends Activity {
 		colors.edit().putString("4", "#FF8BC34A").commit();
 		colors.edit().putString("5", "#FF2196F3").commit();
 		colors.edit().putString("6", "#FFF06292").commit();
+	}
+	
+	
+	public void _hideNotibar() {
+		{
+			getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		}
+	}
+	
+	
+	public void _showNotibar() {
+		{
+			getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		}
 	}
 	
 	
