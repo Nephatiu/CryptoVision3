@@ -3,7 +3,7 @@
 
 This source-code is released for transparancy and insight rather than to build yourself, though it should be buildable with Android Studio.
 
-Occasional test-builds are available in the (Builds-folder)[https://github.com/Nephatiu/CryptoVision3/tree/base/builds]
+Occasional test-builds are available in the [Builds-folder](https://github.com/Nephatiu/CryptoVision3/tree/base/builds)
 
 So far only test-builds are available until the final release of v3.00. These builds are numbered and although not every build gets provided in apk, the test-builds that are present should be up to date with the latest github commits as they usually get pushed along with their source-code updates.
 
