@@ -13,7 +13,8 @@
 		android:paddingRight="8dp"
 		android:background="#333333"
 		android:gravity="bottom"
-		android:orientation="vertical">
+		android:orientation="vertical"
+		android:layout_gravity="bottom">
 		<LinearLayout
 			android:id="@+id/headEdge"
 			android:layout_width="match_parent"
@@ -30,9 +31,10 @@
 			android:id="@+id/settingsTitle"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
+			android:layout_marginLeft="25dp"
 			android:padding="8dp"
 			android:gravity="top"
-			android:text="cVn App-Settings:"
+			android:text="App-Settings:"
 			android:textSize="14sp"
 			android:textStyle="bold"
 			android:textColor="#FDD835"
@@ -48,6 +50,19 @@
 			android:textSize="12sp"
 			android:textStyle="italic"
 			android:textColor="#BDBDBD" />
+		<Switch
+			android:id="@+id/settingAds"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:paddingLeft="60dp"
+			android:paddingTop="8dp"
+			android:paddingRight="8dp"
+			android:paddingBottom="8dp"
+			android:gravity="left|center_vertical"
+			android:text="Occasional Banner Ad"
+			android:textSize="12sp"
+			android:textStyle="italic"
+			android:textColor="#FFFFFF" />
 		<Switch
 			android:id="@+id/settingShelf"
 			android:layout_width="match_parent"
@@ -168,6 +183,14 @@
 			android:layout_height="match_parent"
 			android:padding="8dp"
 			android:layout_weight="5" />
+		<com.google.android.gms.ads.AdView
+			android:id="@+id/settingsAd"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:alpha="0.0"
+			app:adSize="BANNER"
+			app:adUnitId="ca-app-pub-1087736748248488/2777554924"
+			android:layout_gravity="center_horizontal|center_vertical" />
 		<LinearLayout
 			android:id="@+id/footHeader"
 			android:layout_width="match_parent"
@@ -188,6 +211,14 @@
 				android:textSize="20sp"
 				android:textStyle="bold"
 				android:textColor="#FDD835" />
+			<TextView
+				android:id="@+id/sponsorButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="8dp"
+				android:text="💠"
+				android:textSize="16sp"
+				android:textColor="#000000" />
 			<TextView
 				android:id="@+id/versionSpam"
 				android:layout_width="match_parent"

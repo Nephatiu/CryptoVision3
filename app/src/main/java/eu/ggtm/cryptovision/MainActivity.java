@@ -43,6 +43,9 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.MobileAds;
 import java.io.*;
 import java.text.*;
 import java.util.*;
@@ -91,11 +94,19 @@ public class MainActivity extends Activity {
 	private double startShout4 = 0;
 	private double startShout5 = 0;
 	private boolean settingRewinding = false;
+	private double adBannerInterval = 0;
+	private double bannerAdSpaceAmount = 0;
+	private double settingsTapCount = 0;
+	private double footTapCount = 0;
+	private double exitTapCount = 0;
+	private double exitBackTapCount = 0;
+	private double eggShoutAmount = 0;
 	
 	private LinearLayout baseFrame;
 	private LinearLayout headEdge;
 	private WebView accessPortal;
 	private ImageView chatShelf;
+	private AdView badAnner;
 	private HorizontalScrollView bottomSpacer;
 	private ProgressBar loadBar;
 	private LinearLayout footHeader;
@@ -141,12 +152,21 @@ public class MainActivity extends Activity {
 	private TimerTask eggDelay;
 	private ObjectAnimator titleVanish = new ObjectAnimator();
 	private TimerTask vanishDelay;
+	private TimerTask bannerAd;
+	private ObjectAnimator alphaShelf = new ObjectAnimator();
+	private ObjectAnimator alphaAd = new ObjectAnimator();
+	private TimerTask bannerAdDelay;
+	private TimerTask removeAdDelay;
+	private TimerTask shelfShowDelay;
 	
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.main);
 		initialize(_savedInstanceState);
+		
+		MobileAds.initialize(this);
+		
 		initializeLogic();
 	}
 	
@@ -157,6 +177,7 @@ public class MainActivity extends Activity {
 		accessPortal.getSettings().setJavaScriptEnabled(true);
 		accessPortal.getSettings().setSupportZoom(true);
 		chatShelf = findViewById(R.id.chatShelf);
+		badAnner = findViewById(R.id.badAnner);
 		bottomSpacer = findViewById(R.id.bottomSpacer);
 		loadBar = findViewById(R.id.loadBar);
 		footHeader = findViewById(R.id.footHeader);
@@ -309,6 +330,8 @@ public class MainActivity extends Activity {
 			public void onClick(View _view) {
 				if (accessPortal.getUrl().contains("node.cryptovision.live")) {
 					touchBzz.vibrate((long)(100));
+					footTapCount++;
+					memory.edit().putString("FootCount", String.valueOf((long)(footTapCount))).commit();
 					accessPortal.stopLoading();
 					accessPortal.clearCache(true);
 					accessPortal.loadUrl("https://cryptovision.live");
@@ -316,6 +339,8 @@ public class MainActivity extends Activity {
 				}
 				else {
 					touchBzz.vibrate((long)(100));
+					footTapCount++;
+					memory.edit().putString("FootCount", String.valueOf((long)(footTapCount))).commit();
 					currentURL = accessPortal.getUrl();
 					accessPortal.stopLoading();
 					accessPortal.clearCache(true);
@@ -335,6 +360,8 @@ public class MainActivity extends Activity {
 					settingRewinding = true;
 					settingsRotate.cancel();
 					touchBzz.vibrate((long)(100));
+					settingsTapCount++;
+					memory.edit().putString("SettingsCount", String.valueOf((long)(settingsTapCount))).commit();
 					settingsButton.setTextColor(0xFF350000);
 					tapFlash = new TimerTask() {
 						@Override
@@ -382,6 +409,8 @@ public class MainActivity extends Activity {
 			public void onClick(View _view) {
 				exitButton.setText("❌");
 				touchBzz.vibrate((long)(125));
+				exitTapCount++;
+				memory.edit().putString("ExitCount", String.valueOf((long)(exitTapCount))).commit();
 				tapFlash = new TimerTask() {
 					@Override
 					public void run() {
@@ -405,9 +434,16 @@ public class MainActivity extends Activity {
 		_enableJavascript();
 		_actionFullscreenAddon();
 		versionInfo = "3.00";
-		buildInfo = "95";
+		buildInfo = "137";
 		memory.edit().putString("Version", versionInfo).commit();
 		memory.edit().putString("Build", buildInfo).commit();
+		settingRewinding = true;
+		
+		{
+			AdRequest adRequest = new AdRequest.Builder().build();
+			badAnner.loadAd(adRequest);
+		}
+		badAnner.setVisibility(View.GONE);
 		overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
 		chatShelf.setColorFilter(0xFF350000, PorterDuff.Mode.MULTIPLY);
 		timeDigital.setTextColor(Color.parseColor("#FFFFFF"));
@@ -482,6 +518,36 @@ public class MainActivity extends Activity {
 			}
 		};
 		_timer.scheduleAtFixedRate(webTitleCheck, (int)(100), (int)(100));
+		if (memory.contains("SettingsCount")) {
+			settingsTapCount = Double.parseDouble(memory.getString("SettingsCount", ""));
+		}
+		else {
+			settingsTapCount = 0;
+		}
+		if (memory.contains("FootCount")) {
+			footTapCount = Double.parseDouble(memory.getString("FootCount", ""));
+		}
+		else {
+			footTapCount = 0;
+		}
+		if (memory.contains("ExitCount")) {
+			exitTapCount = Double.parseDouble(memory.getString("ExitCount", ""));
+		}
+		else {
+			exitTapCount = 0;
+		}
+		if (memory.contains("ExitbackCount")) {
+			exitBackTapCount = Double.parseDouble(memory.getString("ExitbackCount", ""));
+		}
+		else {
+			exitBackTapCount = 0;
+		}
+		if (memory.contains("EggShoutCount")) {
+			eggShoutAmount = Double.parseDouble(memory.getString("EggShoutCount", ""));
+		}
+		else {
+			eggShoutAmount = 0;
+		}
 		settingRewinding = false;
 		exitRepeat = false;
 		settingsRotation = 0;
@@ -643,6 +709,80 @@ public class MainActivity extends Activity {
 			};
 			_timer.schedule(showSettings, (int)(1500));
 		}
+		settingRewinding = false;
+		adBannerInterval = SketchwareUtil.getRandom((int)(60000), (int)(600000));
+		if (!memory.getString("Shelf", "").equals("Off")) {
+			if (!memory.getString("Ads", "").equals("Disabled")) {
+				bannerAd = new TimerTask() {
+					@Override
+					public void run() {
+						runOnUiThread(new Runnable() {
+							@Override
+							public void run() {
+								alphaShelf.setTarget(chatShelf);
+								alphaShelf.setPropertyName("alpha");
+								alphaShelf.setFloatValues((float)(1.0d), (float)(0.0d));
+								alphaShelf.setDuration((int)(4444));
+								alphaShelf.start();
+								bannerAdDelay = new TimerTask() {
+									@Override
+									public void run() {
+										runOnUiThread(new Runnable() {
+											@Override
+											public void run() {
+												chatShelf.setVisibility(View.GONE);
+												badAnner.setVisibility(View.VISIBLE);
+												alphaAd.setTarget(badAnner);
+												alphaAd.setPropertyName("alpha");
+												alphaAd.setFloatValues((float)(0.0d), (float)(1.0d));
+												alphaAd.setDuration((int)(4444));
+												alphaAd.start();
+											}
+										});
+									}
+								};
+								_timer.schedule(bannerAdDelay, (int)(4500));
+								removeAdDelay = new TimerTask() {
+									@Override
+									public void run() {
+										runOnUiThread(new Runnable() {
+											@Override
+											public void run() {
+												alphaAd.setTarget(badAnner);
+												alphaAd.setPropertyName("alpha");
+												alphaAd.setFloatValues((float)(1.0d), (float)(0.0d));
+												alphaAd.setDuration((int)(4444));
+												alphaAd.start();
+											}
+										});
+									}
+								};
+								_timer.schedule(removeAdDelay, (int)(309000));
+								shelfShowDelay = new TimerTask() {
+									@Override
+									public void run() {
+										runOnUiThread(new Runnable() {
+											@Override
+											public void run() {
+												badAnner.setVisibility(View.GONE);
+												chatShelf.setVisibility(View.VISIBLE);
+												alphaShelf.setTarget(chatShelf);
+												alphaShelf.setPropertyName("alpha");
+												alphaShelf.setFloatValues((float)(0.0d), (float)(1.0d));
+												alphaShelf.setDuration((int)(4444));
+												alphaShelf.start();
+											}
+										});
+									}
+								};
+								_timer.schedule(shelfShowDelay, (int)(313500));
+							}
+						});
+					}
+				};
+				_timer.scheduleAtFixedRate(bannerAd, (int)(adBannerInterval), (int)(918000));
+			}
+		}
 	}
 	
 	@Override
@@ -651,7 +791,33 @@ public class MainActivity extends Activity {
 			accessPortal.goBack();
 		}
 		else {
+			exitBackTapCount++;
+			memory.edit().putString("ExitbackCount", String.valueOf((long)(exitBackTapCount))).commit();
 			_doubleExit();
+		}
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if (badAnner != null) {
+			badAnner.destroy();
+		}
+	}
+	
+	@Override
+	public void onPause() {
+		super.onPause();
+		if (badAnner != null) {
+			badAnner.pause();
+		}
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+		if (badAnner != null) {
+			badAnner.resume();
 		}
 	}
 	public void _enableJavascript() {
@@ -789,6 +955,8 @@ public class MainActivity extends Activity {
 													public void run() {
 														topShout1.setText(textShout1);
 														topShout1.setVisibility(View.VISIBLE);
+														eggShoutAmount++;
+														memory.edit().putString("EggShoutCount", String.valueOf((long)(eggShoutAmount))).commit();
 														queueShout1 = new TimerTask() {
 															@Override
 															public void run() {
@@ -831,6 +999,8 @@ public class MainActivity extends Activity {
 													public void run() {
 														topShout2.setText(textShout2);
 														topShout2.setVisibility(View.VISIBLE);
+														eggShoutAmount++;
+														memory.edit().putString("EggShoutCount", String.valueOf((long)(eggShoutAmount))).commit();
 														queueShout2 = new TimerTask() {
 															@Override
 															public void run() {
@@ -873,6 +1043,8 @@ public class MainActivity extends Activity {
 													public void run() {
 														topShout3.setText(textShout3);
 														topShout3.setVisibility(View.VISIBLE);
+														eggShoutAmount++;
+														memory.edit().putString("EggShoutCount", String.valueOf((long)(eggShoutAmount))).commit();
 														queueShout3 = new TimerTask() {
 															@Override
 															public void run() {
@@ -915,6 +1087,8 @@ public class MainActivity extends Activity {
 													public void run() {
 														topShout4.setText(textShout4);
 														topShout4.setVisibility(View.VISIBLE);
+														eggShoutAmount++;
+														memory.edit().putString("EggShoutCount", String.valueOf((long)(eggShoutAmount))).commit();
 														queueShout4 = new TimerTask() {
 															@Override
 															public void run() {
@@ -957,6 +1131,8 @@ public class MainActivity extends Activity {
 													public void run() {
 														topShout5.setText(textShout5);
 														topShout5.setVisibility(View.VISIBLE);
+														eggShoutAmount++;
+														memory.edit().putString("EggShoutCount", String.valueOf((long)(eggShoutAmount))).commit();
 														queueShout5 = new TimerTask() {
 															@Override
 															public void run() {
@@ -1028,6 +1204,19 @@ public class MainActivity extends Activity {
 		{
 			getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		}
+	}
+	
+	
+	public void _reHeight(final double _height) {
+		LinearLayout bottomSpacer = (LinearLayout) findViewById(R.id.bottomSpacer);
+		
+		android.widget.LinearLayout.LayoutParams params = (android.widget. LinearLayout.LayoutParams)bottomSpacer.getLayoutParams();
+		
+		params.width = android.widget. LinearLayout.LayoutParams.MATCH_PARENT;
+		
+		params.height = (int)getDip((int)_height);
+		
+		bottomSpacer.setLayoutParams(params);
 	}
 	
 	

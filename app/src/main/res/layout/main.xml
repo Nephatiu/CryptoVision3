@@ -94,9 +94,17 @@
 		<ImageView
 			android:id="@+id/chatShelf"
 			android:layout_width="match_parent"
-			android:layout_height="40dp"
+			android:layout_height="55dp"
 			android:src="@drawable/shelf"
 			android:scaleType="fitXY" />
+		<com.google.android.gms.ads.AdView
+			android:id="@+id/badAnner"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:alpha="0.0"
+			app:adSize="BANNER"
+			app:adUnitId="ca-app-pub-1087736748248488/2777554924"
+			android:layout_gravity="center_horizontal|center_vertical" />
 		<HorizontalScrollView
 			android:id="@+id/bottomSpacer"
 			android:layout_width="match_parent"
